@@ -126,7 +126,7 @@ fn parse_line(line : Result<String, std::io::Error>, part : Part) -> u32 {
 }
 
 fn main() {
-  if let Ok(lines) = read_input("input.txt") {
+  if let Ok(lines) = read_input("inputs/day2.txt") {
     let my_score : u32 = lines.map(|line| { parse_line(line, Part::One) }).sum();
     println!("My score is {}", my_score);
   }

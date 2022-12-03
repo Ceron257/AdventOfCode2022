@@ -11,7 +11,7 @@ where P: AsRef<Path>,
 }
 
 fn main() {
-  if let Ok(lines) = read_input("input.txt") {
+  if let Ok(lines) = read_input("inputs/day1.txt") {
     let mut current_sum : u32 = 0;
     let mut sums : Vec<u32> = Vec::new();
     for line_result in lines {
