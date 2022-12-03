@@ -1,14 +1,4 @@
-use std::fs::File;
-use std::io::{self, BufRead};
-use std::path::Path;
-use std::vec::Vec;
-
-fn read_input<P>(file_name : P) -> io::Result<io::Lines<io::BufReader<File>>>
-where P: AsRef<Path>,
-{
-  let file = File::open(file_name)?;
-  Ok(io::BufReader::new(file).lines())
-}
+use utilities::*;
 
 fn main() {
   if let Ok(lines) = read_input("inputs/day1.txt") {
