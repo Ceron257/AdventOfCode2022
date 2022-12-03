@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use utilities::*;
 
 #[derive(Debug)]
@@ -24,6 +25,10 @@ impl Rucksack {
         }
         Err(String::from("No duplicate found"))
     }
+
+    fn str(&self) -> String {
+        self.first_compartment.clone() + &self.second_compartment
+    }
 }
 
 fn score(character: char) -> u32 {
@@ -39,14 +44,39 @@ fn score(character: char) -> u32 {
     result as u32
 }
 
+fn group_badge(group: &[Rucksack]) -> char {
+    assert_eq!(group.len(), 3);
+    let group_items = group.iter().map(Rucksack::str).collect::<String>();
+    let is_present_in_all_rucksacks =
+        |&item: &char| group.iter().all(|rucksack| rucksack.str().contains(item));
+    let mut uniq = group_items
+        .chars()
+        .filter(is_present_in_all_rucksacks)
+        .unique();
+    match uniq.next() {
+        Some(v) => v,
+        None => panic!("unable to find group badge"),
+    }
+}
+
 fn main() {
     if let Ok(input) = read_input("inputs/day3.txt") {
-        let duplicates = input
+        let tota_score = input
             .map(|line| Rucksack::from(line.expect("Couldn't read line.")))
             .map(Rucksack::duplicate)
             .map(|dup| dup.expect("No duplicate found"))
             .map(score)
             .sum::<u32>();
-        println!("{:?}", duplicates);
+        println!("{}", tota_score);
+    }
+    if let Ok(input) = read_input("inputs/day3.txt") {
+        let score: u32 = input
+            .map(|line| Rucksack::from(line.expect("Couldn't read line.")))
+            .collect::<Vec<Rucksack>>()
+            .chunks(3)
+            .map(group_badge)
+            .map(score)
+            .sum();
+        println!("{}", score);
     }
 }
