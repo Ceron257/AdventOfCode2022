@@ -130,7 +130,7 @@ fn main() {
     let my_score : u32 = lines.map(|line| { parse_line(line, Part::One) }).sum();
     println!("My score is {}", my_score);
   }
-  if let Ok(lines) = read_input("input.txt") {
+  if let Ok(lines) = read_input("inputs/day2.txt") {
     let my_score_part2 : u32 = lines.map(|line| { parse_line(line, Part::Two) }).sum();
     println!("My score for part 2 is {}", my_score_part2);
   }
