@@ -11,14 +11,18 @@ where
 }
 
 #[derive(Clone, Copy)]
-enum Shape {
+enum OpponentChoice {
     Rock,
     Paper,
     Scissors,
 }
 
-type OpponentChoice = Shape;
-type MyChoice = Shape;
+#[derive(Clone, Copy)]
+enum MyChoice {
+    Rock = 1,
+    Paper = 2,
+    Scissors = 3,
+}
 
 fn my_choice_score(choice: &MyChoice) -> u32 {
     *choice as u32
