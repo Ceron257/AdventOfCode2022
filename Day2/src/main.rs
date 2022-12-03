@@ -127,11 +127,11 @@ fn parse_line(line : Result<String, std::io::Error>, part : Part) -> u32 {
 
 fn main() {
   if let Ok(lines) = read_input("input.txt") {
-    let my_score : u32 = lines.map(|line : Result<String, std::io::Error>| -> u32 { parse_line(line, Part::One) }).sum();
+    let my_score : u32 = lines.map(|line| { parse_line(line, Part::One) }).sum();
     println!("My score is {}", my_score);
   }
   if let Ok(lines) = read_input("input.txt") {
-    let my_score_part2 : u32 = lines.map(|line : Result<String, std::io::Error>| -> u32 { parse_line(line, Part::Two) }).sum();
+    let my_score_part2 : u32 = lines.map(|line| { parse_line(line, Part::Two) }).sum();
     println!("My score for part 2 is {}", my_score_part2);
   }
 }
