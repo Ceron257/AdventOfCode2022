@@ -39,7 +39,7 @@ fn round_result_score(result: RoundResult) -> u32 {
     result as u32
 }
 
-fn round_result(my_choice: &MyChoice, opponent_choice: &OpponentChoice) -> RoundResult {
+fn round_result(my_choice: MyChoice, opponent_choice: OpponentChoice) -> RoundResult {
     match (my_choice, opponent_choice) {
         (MyChoice::Paper, OpponentChoice::Paper) => RoundResult::Draw,
         (MyChoice::Paper, OpponentChoice::Rock) => RoundResult::Win,
@@ -53,29 +53,29 @@ fn round_result(my_choice: &MyChoice, opponent_choice: &OpponentChoice) -> Round
     }
 }
 
-fn parse_my_choice(input: &str) -> MyChoice {
+fn parse_my_choice(input: &char) -> MyChoice {
     match input {
-        "X" => MyChoice::Rock,
-        "Y" => MyChoice::Paper,
-        "Z" => MyChoice::Scissors,
+        'X' => MyChoice::Rock,
+        'Y' => MyChoice::Paper,
+        'Z' => MyChoice::Scissors,
         _ => panic!("invalid input"),
     }
 }
 
-fn parse_opponent_choice(input: &str) -> OpponentChoice {
+fn parse_opponent_choice(input: &char) -> OpponentChoice {
     match input {
-        "A" => OpponentChoice::Rock,
-        "B" => OpponentChoice::Paper,
-        "C" => OpponentChoice::Scissors,
+        'A' => OpponentChoice::Rock,
+        'B' => OpponentChoice::Paper,
+        'C' => OpponentChoice::Scissors,
         _ => panic!("invalid input"),
     }
 }
 
-fn parse_desired_outcome(input: &str) -> RoundResult {
+fn parse_desired_outcome(input: &char) -> RoundResult {
     match input {
-        "X" => RoundResult::Lose,
-        "Y" => RoundResult::Draw,
-        "Z" => RoundResult::Win,
+        'X' => RoundResult::Lose,
+        'Y' => RoundResult::Draw,
+        'Z' => RoundResult::Win,
         _ => panic!("invalid input"),
     }
 }
@@ -89,7 +89,7 @@ fn result(my_choice: MyChoice, round_result: RoundResult) -> u32 {
     my_choice_score(&my_choice) + round_result_score(round_result)
 }
 
-fn my_choice_part_two(opponent_choice: OpponentChoice, round_result: &RoundResult) -> MyChoice {
+fn my_choice_part_two(opponent_choice: OpponentChoice, round_result: RoundResult) -> MyChoice {
     match (opponent_choice, round_result) {
         (OpponentChoice::Paper, RoundResult::Draw) => MyChoice::Paper,
         (OpponentChoice::Rock, RoundResult::Draw) => MyChoice::Rock,
@@ -105,15 +105,19 @@ fn my_choice_part_two(opponent_choice: OpponentChoice, round_result: &RoundResul
 
 fn parse_line(line: Result<String, std::io::Error>, part: Part) -> u32 {
     let line_result = line.expect("Help?");
-    let opponent_choice = parse_opponent_choice(&line_result[0..1]);
-    let second_character = &line_result[2..];
+    let opponent_choice =
+        parse_opponent_choice(&line_result.chars().nth(0).expect("No character given"));
+    let second_character = &line_result
+        .chars()
+        .nth(2)
+        .expect("Missing second character");
     let round_result = match part {
-        Part::One => round_result(&parse_my_choice(second_character), &opponent_choice),
+        Part::One => round_result(parse_my_choice(second_character), opponent_choice),
         Part::Two => parse_desired_outcome(second_character),
     };
     let my_choice = match part {
         Part::One => parse_my_choice(second_character),
-        Part::Two => my_choice_part_two(opponent_choice, &round_result),
+        Part::Two => my_choice_part_two(opponent_choice, round_result),
     };
     result(my_choice, round_result)
 }
