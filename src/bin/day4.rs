@@ -46,15 +46,31 @@ fn range_fully_contains(first: Range<u32>, second: Range<u32>) -> bool {
         || second.contains(&first.start) && second.contains(&first.end)
 }
 
+fn ranges_overlap(first: Range<u32>, second: Range<u32>) -> bool {
+    first.contains(&second.start)
+        || first.contains(&(&second.end - 1))
+        || second.contains(&first.start)
+        || second.contains(&(&first.end - 1))
+}
+
 fn main() {
     if let Ok(input) = read_input("inputs/day4.txt") {
-        let sections = input
+        let fully_contains_count = input
             .map(|line| line.expect("Couldn't read line"))
             .map(parse_line)
             .map(|(first, second)| range_fully_contains(first, second))
             .filter(|fully_contains| *fully_contains)
             .count();
-        println!("{:#?}", sections);
+        println!("{:#?} sections fully contain other sections of the same group.", fully_contains_count);
+    }
+    if let Ok(input) = read_input("inputs/day4.txt") {
+        let overlap_count = input
+            .map(|line| line.expect("Couldn't read line"))
+            .map(parse_line)
+            .map(|(first, second)| ranges_overlap(first, second))
+            .filter(|fully_contains| *fully_contains)
+            .count();
+        println!("{:#?} sections overlap with the other section of the same group.", overlap_count);
     }
 }
 
@@ -74,31 +90,37 @@ pub mod tests {
         assert_eq!(section, 0..0);
     }
 
+    fn test_section_commutative(
+        f: fn(Range<u32>, Range<u32>) -> bool,
+        first: Range<u32>,
+        second: Range<u32>,
+    ) {
+        assert_eq!(
+            f(first.clone(), second.clone()),
+            f(second, first),
+            "f is expected to be commutative in its arguments"
+        );
+    }
+
     fn test_full_overlap_commutative(first: Range<u32>, second: Range<u32>, expected: bool) {
         assert_eq!(
             range_fully_contains(first.clone(), second.clone()),
             expected
         );
-        assert_eq!(
-            range_fully_contains(first.clone(), second.clone()),
-            range_fully_contains(second, first),
-            "range_fully_contains is expected to be commutative in its arguments"
-        );
+        test_section_commutative(range_fully_contains, first, second)
     }
 
     #[test]
-    fn no_overlap_right() {
+    fn contains_no_overlap_right() {
         /*
           .234.....  2-4
           .....678.  6-8
         */
-        let first = 2..5;
-        let second = 6..9;
-        test_full_overlap_commutative(first, second, false)
+        test_full_overlap_commutative(2..5, 6..9, false)
     }
 
     #[test]
-    fn partial_overlap_right() {
+    fn contains_partial_overlap_right() {
         /*
           ....567..  5-7
           ......789  7-9
@@ -107,7 +129,7 @@ pub mod tests {
     }
 
     #[test]
-    fn fully_contained() {
+    fn contains_fully_contained() {
         /*
           .2345678.  2-8
           ..34567..  3-7
@@ -116,7 +138,7 @@ pub mod tests {
     }
 
     #[test]
-    fn partial_overlap_left() {
+    fn contains_partial_overlap_left() {
         /*
          .....67..  6-7
          ...456...  4-6
@@ -125,11 +147,61 @@ pub mod tests {
     }
 
     #[test]
-    fn no_overlap_left() {
+    fn contains_no_overlap_left() {
         /*
           .....6...  6-6
           ...45....  4-5
         */
         test_full_overlap_commutative(6..7, 4..6, false)
+    }
+
+    fn test_overlap_commutative(first: Range<u32>, second: Range<u32>, expected: bool) {
+        assert_eq!(ranges_overlap(first.clone(), second.clone()), expected);
+        test_section_commutative(ranges_overlap, first, second)
+    }
+
+    #[test]
+    fn overlaps_no_overlap_right() {
+        /*
+          .234.....  2-4
+          .....678.  6-8
+        */
+        test_overlap_commutative(2..5, 6..9, false)
+    }
+
+    #[test]
+    fn overlaps_partial_overlap_right() {
+        /*
+          ....567..  5-7
+          ......789  7-9
+        */
+        test_overlap_commutative(5..8, 7..10, true)
+    }
+
+    #[test]
+    fn overlaps_fully_contained() {
+        /*
+          .2345678.  2-8
+          ..34567..  3-7
+        */
+        test_overlap_commutative(2..9, 3..8, true)
+    }
+
+    #[test]
+    fn overlaps_partial_overlap_left() {
+        /*
+         .....67..  6-7
+         ...456...  4-6
+        */
+        test_overlap_commutative(6..8, 4..7, true)
+    }
+
+    #[test]
+    fn overlaps_no_overlap_left() {
+        /*
+          .....6...  6-6
+          ...45....  4-5
+        */
+        test_overlap_commutative(6..7, 4..6, false)
     }
 }
