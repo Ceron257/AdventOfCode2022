@@ -3,7 +3,9 @@ use regex::Regex;
 use std::ops::Range;
 use utilities::*;
 
-fn parse_section(input: &str) -> Range<u32> {
+type Section = Range<u32>;
+
+fn parse_section(input: &str) -> Section {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^(\d*)-(\d*)$").unwrap();
     }
@@ -30,7 +32,7 @@ fn parse_section(input: &str) -> Range<u32> {
     0..0
 }
 
-fn parse_line(input: String) -> (Range<u32>, Range<u32>) {
+fn parse_line(input: String) -> (Section, Section) {
     let mut sections = input.split(",");
     let first_section = sections.next();
     let second_section = sections.next();
@@ -41,12 +43,12 @@ fn parse_line(input: String) -> (Range<u32>, Range<u32>) {
     }
 }
 
-fn range_fully_contains(first: Range<u32>, second: Range<u32>) -> bool {
+fn range_fully_contains(first: Section, second: Section) -> bool {
     first.contains(&second.start) && first.contains(&second.end)
         || second.contains(&first.start) && second.contains(&first.end)
 }
 
-fn ranges_overlap(first: Range<u32>, second: Range<u32>) -> bool {
+fn ranges_overlap(first: Section, second: Section) -> bool {
     first.contains(&second.start)
         || first.contains(&(&second.end - 1))
         || second.contains(&first.start)
@@ -61,7 +63,10 @@ fn main() {
             .map(|(first, second)| range_fully_contains(first, second))
             .filter(|fully_contains| *fully_contains)
             .count();
-        println!("{:#?} sections fully contain other sections of the same group.", fully_contains_count);
+        println!(
+            "{:#?} sections fully contain other sections of the same group.",
+            fully_contains_count
+        );
     }
     if let Ok(input) = read_input("inputs/day4.txt") {
         let overlap_count = input
@@ -70,7 +75,10 @@ fn main() {
             .map(|(first, second)| ranges_overlap(first, second))
             .filter(|fully_contains| *fully_contains)
             .count();
-        println!("{:#?} sections overlap with the other section of the same group.", overlap_count);
+        println!(
+            "{:#?} sections overlap with the other section of the same group.",
+            overlap_count
+        );
     }
 }
 
@@ -90,11 +98,7 @@ pub mod tests {
         assert_eq!(section, 0..0);
     }
 
-    fn test_section_commutative(
-        f: fn(Range<u32>, Range<u32>) -> bool,
-        first: Range<u32>,
-        second: Range<u32>,
-    ) {
+    fn test_section_commutative(f: fn(Section, Section) -> bool, first: Section, second: Section) {
         assert_eq!(
             f(first.clone(), second.clone()),
             f(second, first),
@@ -102,7 +106,7 @@ pub mod tests {
         );
     }
 
-    fn test_full_overlap_commutative(first: Range<u32>, second: Range<u32>, expected: bool) {
+    fn test_full_overlap_commutative(first: Section, second: Section, expected: bool) {
         assert_eq!(
             range_fully_contains(first.clone(), second.clone()),
             expected
@@ -155,7 +159,7 @@ pub mod tests {
         test_full_overlap_commutative(6..7, 4..6, false)
     }
 
-    fn test_overlap_commutative(first: Range<u32>, second: Range<u32>, expected: bool) {
+    fn test_overlap_commutative(first: Section, second: Section, expected: bool) {
         assert_eq!(ranges_overlap(first.clone(), second.clone()), expected);
         test_section_commutative(ranges_overlap, first, second)
     }
