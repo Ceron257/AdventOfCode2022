@@ -93,14 +93,9 @@ fn my_choice_part_two(opponent_choice: OpponentChoice, round_result: RoundResult
     }
 }
 
-fn parse_line(line: Result<String, std::io::Error>, part: Part) -> u32 {
-    let line_result = line.expect("Help?");
-    let opponent_choice =
-        parse_opponent_choice(&line_result.chars().nth(0).expect("No character given"));
-    let second_character = &line_result
-        .chars()
-        .nth(2)
-        .expect("Missing second character");
+fn parse_line(line: &String, part: Part) -> u32 {
+    let opponent_choice = parse_opponent_choice(&line.chars().nth(0).expect("No character given"));
+    let second_character = &line.chars().nth(2).expect("Missing second character");
     let round_result = match part {
         Part::One => round_result(parse_my_choice(second_character), opponent_choice),
         Part::Two => parse_desired_outcome(second_character),
@@ -113,12 +108,20 @@ fn parse_line(line: Result<String, std::io::Error>, part: Part) -> u32 {
 }
 
 fn main() {
-    if let Ok(lines) = read_input("inputs/day2.txt") {
-        let my_score: u32 = lines.map(|line| parse_line(line, Part::One)).sum();
-        println!("My score is {}", my_score);
-    }
-    if let Ok(lines) = read_input("inputs/day2.txt") {
-        let my_score_part2: u32 = lines.map(|line| parse_line(line, Part::Two)).sum();
-        println!("My score for part 2 is {}", my_score_part2);
+    match read_input("inputs/day2.txt") {
+        Ok(read_lines) => {
+            let my_score: u32 = read_lines
+                .clone()
+                .iter()
+                .map(|line| parse_line(line, Part::One))
+                .sum();
+            println!("My score is {}", my_score);
+            let my_score_part2: u32 = read_lines
+                .iter()
+                .map(|line| parse_line(line, Part::Two))
+                .sum();
+            println!("My score for part 2 is {}", my_score_part2);
+        }
+        Err(err) => println!("Failed to read input: {}", err),
     }
 }

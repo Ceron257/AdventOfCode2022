@@ -5,41 +5,35 @@ use utilities::*;
 
 type Section = Range<u32>;
 
-fn parse_section(input: &str) -> Section {
+fn parse_section(input: &str) -> Result<Section, String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^(\d*)-(\d*)$").unwrap();
     }
-    let maybe_captures = RE.captures(input.trim());
-    if let Some(captures) = maybe_captures {
-        let captures = (captures.get(1), captures.get(2));
-        match captures {
+    match RE.captures(input.trim()) {
+        Some(captures) => match (captures.get(1), captures.get(2)) {
             (Some(first), Some(second)) => {
-                return Range::<u32> {
-                    start: first
-                        .as_str()
-                        .parse::<u32>()
-                        .expect("Couldn't parse start of section"),
-                    end: second
-                        .as_str()
-                        .parse::<u32>()
-                        .expect("Couldn't parse end of section")
-                        + 1,
-                }
+                return match (
+                    first.as_str().parse::<u32>(),
+                    second.as_str().parse::<u32>(),
+                ) {
+                    (Ok(start), Ok(end)) => Ok(start..end + 1),
+                    (Err(_), _) => Err("Couldn't parse start of section".to_string()),
+                    (_, Err(_)) => Err("Couldn't parse end of section".to_string()),
+                };
             }
-            _ => return 0..0,
-        }
+            (None, _) => return Err("Couldn't find start of section.".to_string()),
+            (_, None) => return Err("Couldn't find end of section.".to_string()),
+        },
+        None => Err("Couldn't parse section.".to_string()),
     }
-    0..0
 }
 
-fn parse_line(input: String) -> (Section, Section) {
+fn parse_line(input: &String) -> Result<(Section, Section), String> {
     let mut sections = input.split(",");
-    let first_section = sections.next();
-    let second_section = sections.next();
-
-    match (first_section, second_section) {
-        (Some(first), Some(second)) => (parse_section(first), parse_section(second)),
-        (_, _) => (0..0, 0..0),
+    match (sections.next(), sections.next()) {
+        (Some(first), Some(second)) => Ok((parse_section(first)?, parse_section(second)?)),
+        (None, _) => Err("Couldn't find first section in input.".to_string()),
+        (_, None) => Err("Couldn't find second section in input.".to_string()),
     }
 }
 
@@ -55,30 +49,43 @@ fn ranges_overlap(first: Section, second: Section) -> bool {
         || second.contains(&(&first.end - 1))
 }
 
-fn main() {
-    if let Ok(input) = read_input("inputs/day4.txt") {
-        let fully_contains_count = input
-            .map(|line| line.expect("Couldn't read line"))
-            .map(parse_line)
-            .map(|(first, second)| range_fully_contains(first, second))
-            .filter(|fully_contains| *fully_contains)
-            .count();
-        println!(
-            "{:#?} sections fully contain other sections of the same group.",
-            fully_contains_count
-        );
+fn calculate_overlap(
+    f: fn(Section, Section) -> bool,
+    input: Result<(Section, Section), String>,
+) -> bool {
+    match input {
+        Ok((first, second)) => f(first, second),
+        Err(msg) => panic!("Failed to calculate overlap: {}", msg),
     }
-    if let Ok(input) = read_input("inputs/day4.txt") {
-        let overlap_count = input
-            .map(|line| line.expect("Couldn't read line"))
-            .map(parse_line)
-            .map(|(first, second)| ranges_overlap(first, second))
-            .filter(|fully_contains| *fully_contains)
-            .count();
-        println!(
-            "{:#?} sections overlap with the other section of the same group.",
-            overlap_count
-        );
+}
+
+fn main() {
+    match read_input("inputs/day4.txt") {
+        Ok(lines) => {
+            let fully_contains_count = lines
+                .iter()
+                .map(parse_line)
+                .map(|group| calculate_overlap(range_fully_contains, group))
+                .filter(|fully_contains| *fully_contains)
+                .count();
+
+            let overlap_count = lines
+                .iter()
+                .map(parse_line)
+                .map(|group| calculate_overlap(ranges_overlap, group))
+                .filter(|fully_contains| *fully_contains)
+                .count();
+
+            println!(
+                "{:#?} sections fully contain other sections of the same group.",
+                fully_contains_count
+            );
+            println!(
+                "{:#?} sections overlap with the other section of the same group.",
+                overlap_count
+            );
+        }
+        Err(err) => println!("Unable to read input: {}", err),
     }
 }
 
@@ -89,13 +96,13 @@ pub mod tests {
     #[test]
     fn simple_section_parse() {
         let r = parse_section("42-42");
-        assert_eq!(r, 42..43);
+        assert_eq!(r, Ok(42..43));
     }
 
     #[test]
     fn invalid_section_parse() {
         let section = parse_section("a-");
-        assert_eq!(section, 0..0);
+        assert!(section.is_err());
     }
 
     fn test_section_commutative(f: fn(Section, Section) -> bool, first: Section, second: Section) {

@@ -8,12 +8,12 @@ struct Rucksack {
 }
 
 impl Rucksack {
-    fn from(mut input: String) -> Rucksack {
+    fn from(input: &mut String) -> Rucksack {
         let half_length = input.chars().count() / 2;
         let first = input.drain(..half_length).collect::<String>();
         Rucksack {
             first_compartment: first,
-            second_compartment: input,
+            second_compartment: input.clone(),
         }
     }
 
@@ -60,23 +60,29 @@ fn group_badge(group: &[Rucksack]) -> char {
 }
 
 fn main() {
-    if let Ok(input) = read_input("inputs/day3.txt") {
-        let tota_score = input
-            .map(|line| Rucksack::from(line.expect("Couldn't read line.")))
-            .map(Rucksack::duplicate)
-            .map(|dup| dup.expect("No duplicate found"))
-            .map(score)
-            .sum::<u32>();
-        println!("{}", tota_score);
-    }
-    if let Ok(input) = read_input("inputs/day3.txt") {
-        let score: u32 = input
-            .map(|line| Rucksack::from(line.expect("Couldn't read line.")))
-            .collect::<Vec<Rucksack>>()
-            .chunks(3)
-            .map(group_badge)
-            .map(score)
-            .sum();
-        println!("{}", score);
+    match read_input("inputs/day3.txt") {
+        Ok(mut lines) => {
+            let total_score = lines
+                .clone()
+                .iter_mut()
+                .map(Rucksack::from)
+                .map(Rucksack::duplicate)
+                .map(|dup| dup.expect("No duplicate found"))
+                .map(score)
+                .sum::<u32>();
+
+            println!("{}", total_score);
+
+            let score: u32 = lines
+                .iter_mut()
+                .map(Rucksack::from)
+                .collect::<Vec<Rucksack>>()
+                .chunks(3)
+                .map(group_badge)
+                .map(score)
+                .sum();
+            println!("{}", score);
+        }
+        Err(err) => println!("Failed to read input: {}", err),
     }
 }
