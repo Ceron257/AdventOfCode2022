@@ -104,12 +104,14 @@ fn parse_state(mut input: Iter<String>) -> (Iter<String>, Option<State>) {
     (input, None)
 }
 
-fn apply_instruction(mut input: State, instruction: MoveInstruction) -> Result<State, String> {
+fn apply_instruction(mut input: State, instruction: MoveInstruction, do_reverse : bool) -> Result<State, String> {
     let mut crates;
     match input.get_mut(instruction.from - 1) {
         Some(from_state) => {
             crates = from_state.split_off(from_state.len().saturating_sub(instruction.amount));
-            crates.reverse();
+            if do_reverse {
+              crates.reverse();
+            }
         }
         _ => return Err("Can't apply instruction to this state.".to_string()),
     }
@@ -132,7 +134,7 @@ fn main() {
                 Some(mut state) => match parse_move_instructions(iter) {
                     Some(instructions) => {
                         for instruction in instructions {
-                            match apply_instruction(state, instruction) {
+                            match apply_instruction(state, instruction, true) {
                                 Ok(new_state) => state = new_state,
                                 Err(msg) => panic!("Couldn't apply state to state: {}", msg),
                             }
@@ -144,6 +146,29 @@ fn main() {
                             }
                         }
                         println!("My solution would be {}.", solution);
+                    }
+                    None => println!("Couldn't parse move instructions."),
+                },
+                None => println!("Couldn't parse state."),
+            }
+            let (mut iter, state) = parse_state(lines.iter());
+            iter.next(); // skip empty line
+            match state {
+                Some(mut state) => match parse_move_instructions(iter) {
+                    Some(instructions) => {
+                        for instruction in instructions {
+                            match apply_instruction(state, instruction, false) {
+                                Ok(new_state) => state = new_state,
+                                Err(msg) => panic!("Couldn't apply state to state: {}", msg),
+                            }
+                        }
+                        let mut solution = String::new();
+                        for stack in state {
+                            if !stack.is_empty() {
+                                solution.push(*stack.last().unwrap());
+                            }
+                        }
+                        println!("My solution for part 2 would be {}.", solution);
                     }
                     None => println!("Couldn't parse move instructions."),
                 },
@@ -267,9 +292,25 @@ pub mod test {
                     amount: 2,
                     from: 1,
                     to: 2
-                }
+                },
+                true
             ),
             Ok([[].to_vec(), ['A', 'T', 'S'].to_vec()].to_vec())
+        );
+
+        let state = [['S', 'T'].to_vec(), ['A'].to_vec()].to_vec();
+
+        assert_eq!(
+            apply_instruction(
+                state,
+                MoveInstruction {
+                    amount: 2,
+                    from: 1,
+                    to: 2
+                },
+                false
+            ),
+            Ok([[].to_vec(), ['A', 'S', 'T'].to_vec()].to_vec())
         )
     }
 }
