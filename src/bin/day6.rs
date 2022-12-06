@@ -62,42 +62,67 @@ pub mod test {
 
     #[test]
     fn test_find_packet_marker() {
-        // packet start markers of length 4
         assert_eq!(
-            find_packet_marker(&"bvwbjplbgvbhsrlpgdmjqwftvncz".to_string(), 4),
+            find_packet_marker(
+                &"bvwbjplbgvbhsrlpgdmjqwftvncz".to_string(),
+                MarkerType::PacketStart as usize
+            ),
             Ok(5)
         );
         assert_eq!(
-            find_packet_marker(&"nppdvjthqldpwncqszvftbrmjlhg".to_string(), 4),
+            find_packet_marker(
+                &"nppdvjthqldpwncqszvftbrmjlhg".to_string(),
+                MarkerType::PacketStart as usize
+            ),
             Ok(6)
         );
         assert_eq!(
-            find_packet_marker(&"nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg".to_string(), 4),
+            find_packet_marker(
+                &"nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg".to_string(),
+                MarkerType::PacketStart as usize
+            ),
             Ok(10)
         );
         assert_eq!(
-            find_packet_marker(&"zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw".to_string(), 4),
+            find_packet_marker(
+                &"zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw".to_string(),
+                MarkerType::PacketStart as usize
+            ),
             Ok(11)
         );
-        // message markers of length 14
         assert_eq!(
-            find_packet_marker(&"mjqjpqmgbljsphdztnvjfqwrcgsmlb".to_string(), 14),
+            find_packet_marker(
+                &"mjqjpqmgbljsphdztnvjfqwrcgsmlb".to_string(),
+                MarkerType::MessageStart as usize
+            ),
             Ok(19)
         );
         assert_eq!(
-            find_packet_marker(&"bvwbjplbgvbhsrlpgdmjqwftvncz".to_string(), 14),
+            find_packet_marker(
+                &"bvwbjplbgvbhsrlpgdmjqwftvncz".to_string(),
+                MarkerType::MessageStart as usize
+            ),
             Ok(23)
         );
         assert_eq!(
-            find_packet_marker(&"nppdvjthqldpwncqszvftbrmjlhg".to_string(), 14),
+            find_packet_marker(
+                &"nppdvjthqldpwncqszvftbrmjlhg".to_string(),
+                MarkerType::MessageStart as usize
+            ),
             Ok(23)
         );
         assert_eq!(
-            find_packet_marker(&"nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg".to_string(), 14),
+            find_packet_marker(
+                &"nznrnfrfntjfmvfwmzdfjlvtqnbhcprsg".to_string(),
+                MarkerType::MessageStart as usize
+            ),
             Ok(29)
         );
         assert_eq!(
-            find_packet_marker(&"zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw".to_string(), 14),
+            find_packet_marker(
+                &"zcfzfwzzqfrljwzlrfnpqdbhtmscgvjw".to_string(),
+                MarkerType::MessageStart as usize
+            ),
             Ok(26)
         );
     }
