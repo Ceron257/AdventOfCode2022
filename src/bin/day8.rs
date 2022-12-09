@@ -1,5 +1,5 @@
-use itertools::{enumerate, Itertools};
-use std::{slice::Iter, thread::current};
+use itertools::enumerate;
+use std::slice::Iter;
 use utilities::read_input;
 
 type Value = usize;
