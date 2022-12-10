@@ -101,6 +101,40 @@ impl Grid {
         Some(false)
     }
 
+    fn scenic_score(&self, row_index: usize, column_index: usize) -> usize {
+        let mut view_distances = Vec::new();
+        let reference_height = self.rows[row_index][column_index];
+        let row_iterator = self.row_iter().nth(row_index).unwrap();
+        let (left, right) = row_iterator.split_at(column_index);
+
+        view_distances.push(visible_trees_in_line(left.iter().rev(), reference_height));
+        view_distances.push(visible_trees_in_line(right[1..].iter(), reference_height));
+
+        let column_iterator = self.column_iter().nth(column_index).unwrap();
+        let (up, down) = column_iterator.split_at(row_index);
+
+        view_distances.push(visible_trees_in_line(
+            up.iter().map(|tree_height| *tree_height).rev(),
+            reference_height,
+        ));
+        view_distances.push(visible_trees_in_line(
+            down[1..].iter().map(|tree_height| *tree_height),
+            reference_height,
+        ));
+
+        view_distances.iter().product::<usize>()
+    }
+
+    fn maximum_scenic_score(&self) -> usize {
+        let mut maximum_score = 0;
+        for column in 0..self.rows.first().unwrap().len() {
+            for row in 0..self.rows.len() {
+                maximum_score = maximum_score.max(self.scenic_score(row, column));
+            }
+        }
+        maximum_score
+    }
+
     fn count_visible(&self) -> Option<usize> {
         if self.is_empty() {
             return None;
@@ -116,6 +150,16 @@ impl Grid {
 
         Some(visible_count)
     }
+}
+
+fn visible_trees_in_line<'a, T>(mut iter: T, reference_height: usize) -> usize
+where
+    T: Iterator<Item = &'a usize> + Clone,
+{
+    let count = iter.clone().count();
+    iter.position(|h| h >= &reference_height)
+        .map(|position| position + 1)
+        .unwrap_or_else(|| count)
 }
 
 struct ColumnIterator<'a> {
@@ -168,6 +212,10 @@ fn main() {
     if let Ok(lines) = read_input("inputs/day8.txt") {
         let grid = Grid::from(lines);
         println!("There are {:?} visible trees!", grid.count_visible());
+        println!(
+            "The maximum scenic score is {}",
+            grid.maximum_scenic_score()
+        );
     } else {
         println!("Couldn't read input.")
     }
@@ -376,5 +424,54 @@ mod tests {
     #[test]
     fn test_count_visible() {
         assert_eq!(example_grid().count_visible(), Some(21));
+    }
+
+    #[test]
+    fn test_visible_trees_in_line() {
+        let grid = example_grid();
+        let (row_index, column_index) = (1, 2);
+        let row_iterator = grid.row_iter().nth(row_index).unwrap();
+        let (left, right) = row_iterator.split_at(column_index);
+
+        assert_eq!(visible_trees_in_line(left.iter().rev(), 5), 1);
+        assert_eq!(visible_trees_in_line(right[1..].iter(), 5), 2);
+
+        let column_iterator = grid.column_iter().nth(column_index).unwrap();
+        let (up, down) = column_iterator.split_at(row_index);
+
+        assert_eq!(
+            visible_trees_in_line(up.iter().map(|height| *height).rev(), 5),
+            1
+        );
+        assert_eq!(
+            visible_trees_in_line(down[1..].iter().map(|height| *height), 5),
+            2
+        );
+
+        let (row_index, column_index) = (3, 2);
+        let row_iterator = grid.row_iter().nth(row_index).unwrap();
+        let (left, right) = row_iterator.split_at(column_index);
+
+        assert_eq!(visible_trees_in_line(left.iter().rev(), 5), 2);
+        assert_eq!(visible_trees_in_line(right[1..].iter(), 5), 2);
+
+        let column_iterator = grid.column_iter().nth(column_index).unwrap();
+        let (up, down) = column_iterator.split_at(row_index);
+
+        assert_eq!(
+            visible_trees_in_line(up.iter().map(|height| *height).rev(), 5),
+            2
+        );
+        assert_eq!(
+            visible_trees_in_line(down[1..].iter().map(|height| *height), 5),
+            1
+        );
+    }
+
+    #[test]
+    fn test_scenic_score() {
+        let grid = example_grid();
+        assert_eq!(grid.scenic_score(1, 2), 4);
+        assert_eq!(grid.scenic_score(3, 2), 8);
     }
 }
