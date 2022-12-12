@@ -1,13 +1,15 @@
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
+use std::collections::VecDeque;
 use std::slice::Iter;
 use utilities::read_input;
 
-fn parse_starting_items(input: &str) -> Option<Vec<usize>> {
+fn parse_starting_items(input: &str) -> Option<VecDeque<usize>> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"\s+Starting items:\s(?P<items>(?:\d+,?\s?)+)").unwrap();
     };
-    let mut result = Vec::new();
+    let mut result = VecDeque::new();
     let captures = RE.captures(input)?;
     let items_strings = captures
         .name("items")?
@@ -15,7 +17,7 @@ fn parse_starting_items(input: &str) -> Option<Vec<usize>> {
         .split(",")
         .map(|f| f.trim());
     for item in items_strings {
-        result.push(item.parse::<usize>().ok()?);
+        result.push_back(item.parse::<usize>().ok()?);
     }
     Some(result)
 }
@@ -78,10 +80,55 @@ fn parse_test_branch(input: &str) -> Option<(bool, i32)> {
 
 #[derive(Debug, PartialEq)]
 struct Monkey {
-    items: Vec<usize>,
+    items: VecDeque<usize>,
     operation: Operation,
     test_condition: i32,
     test_branches: [(bool, i32); 2],
+    inspection_count: usize,
+}
+
+impl Monkey {
+    fn inspect_item(&self, item: usize) -> usize {
+        match &self.operation {
+            Operation::Addition(operand) => {
+                item + match operand {
+                    Operand::LastValue => item,
+                    Operand::Number(num) => *num as usize,
+                }
+            }
+            Operation::Multiplication(operand) => {
+                item * match operand {
+                    Operand::LastValue => item,
+                    Operand::Number(num) => *num as usize,
+                }
+            }
+        }
+    }
+
+    fn test_item(&self, item: usize) -> bool {
+        (item as i32 % self.test_condition) == 0
+    }
+
+    fn throw_target(&self, test_result: bool) -> i32 {
+        if self.test_branches[0].0 == test_result {
+            self.test_branches[0].1
+        } else {
+            self.test_branches[1].1
+        }
+    }
+
+    fn play_turn(&mut self) -> VecDeque<(usize, usize)> {
+        let mut thrown_items = VecDeque::new();
+        while let Some(item) = self.items.pop_front() {
+            let mut inspected_item = self.inspect_item(item);
+            inspected_item /= 3;
+            let throw_target = self.throw_target(self.test_item(inspected_item));
+            thrown_items.push_back((inspected_item, throw_target as usize));
+            self.inspection_count += 1;
+        }
+
+        thrown_items
+    }
 }
 
 fn parse_monkey(input: &mut Iter<String>) -> Option<Monkey> {
@@ -103,6 +150,7 @@ fn parse_monkey(input: &mut Iter<String>) -> Option<Monkey> {
         operation,
         test_condition,
         test_branches,
+        inspection_count: 0,
     })
 }
 
@@ -118,9 +166,33 @@ fn parse_monkeys(input: &mut Iter<String>) -> Option<Vec<Monkey>> {
     Some(result)
 }
 
+fn catch_items(monkeys: &mut Vec<Monkey>, thrown_items: VecDeque<(usize, usize)>) {
+    for (item, target) in thrown_items {
+        monkeys[target].items.push_back(item)
+    }
+}
+
+fn play_round(monkeys: &mut Vec<Monkey>) {
+    for monkey_index in 0..monkeys.len() {
+        let turn_result = monkeys[monkey_index].play_turn();
+        catch_items(monkeys, turn_result);
+    }
+}
+
 fn main() {
     if let Ok(lines) = read_input("inputs/day11.txt") {
-        println!("{:?}", parse_monkeys(&mut lines.iter()));
+        let mut monkeys = parse_monkeys(&mut lines.iter()).expect("Couldn't parse monkeys!");
+        for _round in 1..=20 {
+            play_round(&mut monkeys);
+        }
+        let business_level : usize= monkeys
+            .iter()
+            .map(|monkey| monkey.inspection_count)
+            .sorted()
+            .rev()
+            .take(2)
+            .product();
+        println!("The monkey's business is {}.", business_level);
     } else {
         println!("Couldn't read input.");
     }
@@ -134,14 +206,17 @@ pub mod test {
 
     #[test]
     fn test_parse_starting_items() {
-        assert_eq!(parse_starting_items("  Starting items: 80"), Some(vec![80]));
+        assert_eq!(
+            parse_starting_items("  Starting items: 80"),
+            Some(VecDeque::from_iter(vec![80]))
+        );
         assert_eq!(
             parse_starting_items("  Starting items: 75, 83, 74"),
-            Some(vec![75, 83, 74])
+            Some(VecDeque::from_iter(vec![75, 83, 74]))
         );
         assert_eq!(
             parse_starting_items("  Starting items: 86, 67, 61, 96, 52, 63, 73"),
-            Some(vec![86, 67, 61, 96, 52, 63, 73])
+            Some(VecDeque::from_iter(vec![86, 67, 61, 96, 52, 63, 73]))
         );
     }
 
@@ -189,11 +264,50 @@ pub mod test {
         assert_eq!(
             monkey,
             Some(Monkey {
-                items: vec![80],
+                items: VecDeque::from_iter(vec![80]),
                 operation: Operation::Multiplication(Operand::Number(5)),
                 test_condition: 2,
-                test_branches: [(true, 4), (false, 3)]
+                test_branches: [(true, 4), (false, 3)],
+                inspection_count: 0
             })
         );
+    }
+
+    #[test]
+    fn test_monkey_play_turn() {
+        let lines = read_input("inputs/day11-example.txt");
+        assert!(lines.is_ok());
+
+        let mut monkeys =
+            parse_monkeys(&mut lines.unwrap().iter()).expect("Monkey 0 should throw items.");
+        let mut turn_result = monkeys[0].play_turn();
+        catch_items(&mut monkeys, turn_result.clone());
+
+        assert_eq!(turn_result.pop_front(), Some((500, 3)));
+        assert_eq!(turn_result.pop_front(), Some((620, 3)));
+
+        let mut turn_result = monkeys[1].play_turn();
+        catch_items(&mut monkeys, turn_result.clone());
+
+        assert_eq!(turn_result.pop_front(), Some((20, 0)));
+        assert_eq!(turn_result.pop_front(), Some((23, 0)));
+        assert_eq!(turn_result.pop_front(), Some((27, 0)));
+        assert_eq!(turn_result.pop_front(), Some((26, 0)));
+
+        let mut turn_result = monkeys[2].play_turn();
+        catch_items(&mut monkeys, turn_result.clone());
+
+        assert_eq!(turn_result.pop_front(), Some((2080, 1)));
+        assert_eq!(turn_result.pop_front(), Some((1200, 3)));
+        assert_eq!(turn_result.pop_front(), Some((3136, 3)));
+
+        let mut turn_result = monkeys[3].play_turn();
+        catch_items(&mut monkeys, turn_result.clone());
+
+        assert_eq!(turn_result.pop_front(), Some((25, 1)));
+        assert_eq!(turn_result.pop_front(), Some((167, 1)));
+        assert_eq!(turn_result.pop_front(), Some((207, 1)));
+        assert_eq!(turn_result.pop_front(), Some((401, 1)));
+        assert_eq!(turn_result.pop_front(), Some((1046, 1)));
     }
 }
