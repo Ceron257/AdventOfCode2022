@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::VecDeque;
 use std::slice::Iter;
-use utilities::read_input;
+use utilities::{lcm, read_input};
 
 fn parse_starting_items(input: &str) -> Option<VecDeque<usize>> {
     lazy_static! {
@@ -117,11 +117,14 @@ impl Monkey {
         }
     }
 
-    fn play_turn(&mut self) -> VecDeque<(usize, usize)> {
+    fn play_turn<F>(&mut self, score_reduction: &F) -> VecDeque<(usize, usize)>
+    where
+        F: Fn(usize) -> usize,
+    {
         let mut thrown_items = VecDeque::new();
         while let Some(item) = self.items.pop_front() {
             let mut inspected_item = self.inspect_item(item);
-            inspected_item /= 3;
+            inspected_item = score_reduction(inspected_item);
             let throw_target = self.throw_target(self.test_item(inspected_item));
             thrown_items.push_back((inspected_item, throw_target as usize));
             self.inspection_count += 1;
@@ -172,27 +175,55 @@ fn catch_items(monkeys: &mut Vec<Monkey>, thrown_items: VecDeque<(usize, usize)>
     }
 }
 
-fn play_round(monkeys: &mut Vec<Monkey>) {
+fn play_round<F>(monkeys: &mut Vec<Monkey>, score_reduction: F)
+where
+    F: Fn(usize) -> usize,
+{
     for monkey_index in 0..monkeys.len() {
-        let turn_result = monkeys[monkey_index].play_turn();
+        let turn_result = monkeys[monkey_index].play_turn(&score_reduction);
         catch_items(monkeys, turn_result);
     }
 }
 
+fn default_score_reduction(input: usize) -> usize {
+    input / 3
+}
+
+fn compute_business_level(monkeys: &Vec<Monkey>) -> usize {
+    monkeys
+        .iter()
+        .map(|monkey| monkey.inspection_count)
+        .sorted()
+        .rev()
+        .take(2)
+        .product()
+}
+
 fn main() {
     if let Ok(lines) = read_input("inputs/day11.txt") {
-        let mut monkeys = parse_monkeys(&mut lines.iter()).expect("Couldn't parse monkeys!");
+        let mut monkeys =
+            parse_monkeys(&mut lines.clone().iter()).expect("Couldn't parse monkeys!");
         for _round in 1..=20 {
-            play_round(&mut monkeys);
+            play_round(&mut monkeys, default_score_reduction);
         }
-        let business_level : usize= monkeys
-            .iter()
-            .map(|monkey| monkey.inspection_count)
-            .sorted()
-            .rev()
-            .take(2)
-            .product();
+        let business_level = compute_business_level(&monkeys);
         println!("The monkey's business is {}.", business_level);
+        let mut monkeys =
+            parse_monkeys(&mut lines.clone().iter()).expect("Couldn't parse monkeys!");
+        let conditions_lcm = monkeys
+            .iter()
+            .map(|monkey| monkey.test_condition)
+            .reduce(|accumulator, value| lcm(accumulator as usize, value as usize) as i32)
+            .expect("Couldn't compute least common multiple!")
+            as usize;
+        for _round in 1..=10000 {
+            play_round(&mut monkeys, |worry| worry % conditions_lcm);
+        }
+        let business_level = compute_business_level(&monkeys);
+        println!(
+            "The monkey's business is {} after 10000 rounds.",
+            business_level
+        );
     } else {
         println!("Couldn't read input.");
     }
@@ -280,13 +311,13 @@ pub mod test {
 
         let mut monkeys =
             parse_monkeys(&mut lines.unwrap().iter()).expect("Monkey 0 should throw items.");
-        let mut turn_result = monkeys[0].play_turn();
+        let mut turn_result = monkeys[0].play_turn(&default_score_reduction);
         catch_items(&mut monkeys, turn_result.clone());
 
         assert_eq!(turn_result.pop_front(), Some((500, 3)));
         assert_eq!(turn_result.pop_front(), Some((620, 3)));
 
-        let mut turn_result = monkeys[1].play_turn();
+        let mut turn_result = monkeys[1].play_turn(&default_score_reduction);
         catch_items(&mut monkeys, turn_result.clone());
 
         assert_eq!(turn_result.pop_front(), Some((20, 0)));
@@ -294,14 +325,14 @@ pub mod test {
         assert_eq!(turn_result.pop_front(), Some((27, 0)));
         assert_eq!(turn_result.pop_front(), Some((26, 0)));
 
-        let mut turn_result = monkeys[2].play_turn();
+        let mut turn_result = monkeys[2].play_turn(&default_score_reduction);
         catch_items(&mut monkeys, turn_result.clone());
 
         assert_eq!(turn_result.pop_front(), Some((2080, 1)));
         assert_eq!(turn_result.pop_front(), Some((1200, 3)));
         assert_eq!(turn_result.pop_front(), Some((3136, 3)));
 
-        let mut turn_result = monkeys[3].play_turn();
+        let mut turn_result = monkeys[3].play_turn(&default_score_reduction);
         catch_items(&mut monkeys, turn_result.clone());
 
         assert_eq!(turn_result.pop_front(), Some((25, 1)));
