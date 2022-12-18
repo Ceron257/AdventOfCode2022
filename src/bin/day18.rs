@@ -1,8 +1,8 @@
 use itertools::Itertools;
-use std::ops::Range;
+use std::{collections::HashSet, ops::Range};
 use utilities::read_input;
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Eq, Hash)]
 struct Position {
     x: i64,
     y: i64,
@@ -122,6 +122,7 @@ fn compute_surface_area(positions: &Vec<Position>) -> usize {
 }
 
 fn compute_outer_surface_area(positions: &Vec<Position>) -> usize {
+    let solid_positions : HashSet<Position> = HashSet::from_iter(positions.iter().cloned());
     let mut surface_area = 0;
     let mut bounding_box = BoundingBox::new(&positions);
     bounding_box.enlarge(1);
@@ -132,21 +133,21 @@ fn compute_outer_surface_area(positions: &Vec<Position>) -> usize {
         z: bounding_box.z.start,
     });
 
-    let mut closed_positions = Vec::new();
+    let mut closed_positions = HashSet::new();
 
     loop {
         let current_position = open_positions.pop().unwrap();
 
         if !closed_positions.contains(&current_position) {
             let mut neighbors = non_diagonal_neighbors(&current_position);
-            closed_positions.push(current_position);
+            closed_positions.insert(current_position);
             neighbors = bounding_box.clip_positions(neighbors);
 
             for neighbor in neighbors {
                 if closed_positions.contains(&neighbor) {
                     continue;
                 }
-                if positions.contains(&neighbor) {
+                if solid_positions.contains(&neighbor) {
                     surface_area += 1
                 } else {
                     open_positions.push(neighbor);
