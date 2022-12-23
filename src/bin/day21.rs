@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use regex::Regex;
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 use utilities::read_input;
 
 #[derive(Debug, Clone)]
@@ -100,63 +100,39 @@ fn parse_monkeys(input: Vec<String>) -> Option<HashMap<String, Monkey>> {
     Some(result)
 }
 
+fn resolve_operand(monkeys: &HashMap<String, Monkey>, operand: Operand) -> Option<i64> {
+    match operand {
+        Operand::Number(number) => Some(number),
+        Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey),
+    }
+}
+
 fn do_monkey_math(monkeys: &HashMap<String, Monkey>, current_monkey: &String) -> Option<i64> {
     let monkey = monkeys.get(current_monkey)?;
     match monkey.operation.clone() {
         Operation::Addition((first_operand, second_operand)) => {
-            let first_operand = match first_operand {
-                Operand::Number(number) => number,
-                Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey)?,
-            };
-
-            let second_operand = match second_operand {
-                Operand::Number(number) => number,
-                Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey)?,
-            };
+            let first_operand = resolve_operand(monkeys, first_operand)?;
+            let second_operand = resolve_operand(monkeys, second_operand)?;
             Some(first_operand + second_operand)
         }
 
         Operation::Subtraction((first_operand, second_operand)) => {
-            let first_operand = match first_operand {
-                Operand::Number(number) => number,
-                Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey)?,
-            };
-
-            let second_operand = match second_operand {
-                Operand::Number(number) => number,
-                Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey)?,
-            };
+            let first_operand = resolve_operand(monkeys, first_operand)?;
+            let second_operand = resolve_operand(monkeys, second_operand)?;
             Some(first_operand - second_operand)
         }
         Operation::Multiplication((first_operand, second_operand)) => {
-            let first_operand = match first_operand {
-                Operand::Number(number) => number,
-                Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey)?,
-            };
-
-            let second_operand = match second_operand {
-                Operand::Number(number) => number,
-                Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey)?,
-            };
+            let first_operand = resolve_operand(monkeys, first_operand)?;
+            let second_operand = resolve_operand(monkeys, second_operand)?;
             Some(first_operand * second_operand)
         }
         Operation::Division((first_operand, second_operand)) => {
-            let first_operand = match first_operand {
-                Operand::Number(number) => number,
-                Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey)?,
-            };
-
-            let second_operand = match second_operand {
-                Operand::Number(number) => number,
-                Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey)?,
-            };
+            let first_operand = resolve_operand(monkeys, first_operand)?;
+            let second_operand = resolve_operand(monkeys, second_operand)?;
             Some(first_operand / second_operand)
         }
         Operation::Identity(operand) => {
-            let operand = match operand {
-                Operand::Number(number) => number,
-                Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey)?,
-            };
+            let operand = resolve_operand(monkeys, operand)?;
             Some(operand)
         }
     }
@@ -165,7 +141,8 @@ fn do_monkey_math(monkeys: &HashMap<String, Monkey>, current_monkey: &String) ->
 fn main() {
     if let Ok(lines) = read_input("inputs/day21.txt") {
         let monkeys = parse_monkeys(lines.clone()).expect("Couldn't parse monkeys");
-        let result = do_monkey_math(&monkeys, &"root".to_string()).expect("Couldn't do the math :/");
+        let result =
+            do_monkey_math(&monkeys, &"root".to_string()).expect("Couldn't do the math :/");
         println!("{:?}", result);
     } else {
         println!("Couldn't read input.");
