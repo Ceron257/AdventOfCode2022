@@ -9,13 +9,11 @@ enum Operand {
     Monkey(String),
 }
 
-#[derive(Debug, Clone)]
-enum Operation {
-    Identity(Operand),
-    Addition((Operand, Operand)),
-    Subtraction((Operand, Operand)),
-    Multiplication((Operand, Operand)),
-    Division((Operand, Operand)),
+#[derive(Debug)]
+struct Operation {
+    operator: Option<Operator>,
+    first_operand: Operand,
+    second_operand: Option<Operand>,
 }
 
 #[derive(Debug)]
@@ -36,12 +34,14 @@ fn parse_operator(input: &str) -> Option<Operator> {
     }
 }
 
-fn parse_operand(input: &str) -> Operand {
+fn parse_operand(input: &str) -> Option<Operand> {
     if let Ok(number) = input.parse::<i64>() {
-        return Operand::Number(number);
+        return Some(Operand::Number(number));
     }
-
-    Operand::Monkey(input.to_string())
+    if input.is_empty() {
+        return None;
+    }
+    Some(Operand::Monkey(input.to_string()))
 }
 
 fn parse_operation(input: &str) -> Option<Operation> {
@@ -52,27 +52,18 @@ fn parse_operation(input: &str) -> Option<Operation> {
         .unwrap();
     };
     let captures = RE.captures(input).expect("parse_operation no match?");
-    let first_operand = parse_operand(captures.name("first_operand")?.as_str());
-    match captures.name("operator") {
-        None => Some(Operation::Identity(first_operand)),
-        Some(operator) => {
-            let operator = parse_operator(operator.as_str()).expect("Couldn't parse operator");
-            let second_operand = parse_operand(
-                captures
-                    .name("second_operand")
-                    .expect("Given operator requires second operand")
-                    .as_str(),
-            );
-            match operator {
-                Operator::Plus => Some(Operation::Addition((first_operand, second_operand))),
-                Operator::Minus => Some(Operation::Subtraction((first_operand, second_operand))),
-                Operator::Multiply => {
-                    Some(Operation::Multiplication((first_operand, second_operand)))
-                }
-                Operator::Divide => Some(Operation::Division((first_operand, second_operand))),
-            }
-        }
-    }
+    let first_operand = parse_operand(captures.name("first_operand")?.as_str())?;
+    let second_operand = parse_operand(
+        captures
+            .name("second_operand")
+            .map_or_else(|| "", |v| v.as_str()),
+    );
+    let operator = parse_operator(captures.name("operator").map_or_else(|| "", |v| v.as_str()));
+    Some(Operation {
+        operator,
+        first_operand,
+        second_operand,
+    })
 }
 
 #[derive(Debug)]
@@ -100,42 +91,62 @@ fn parse_monkeys(input: Vec<String>) -> Option<HashMap<String, Monkey>> {
     Some(result)
 }
 
-fn resolve_operand(monkeys: &HashMap<String, Monkey>, operand: Operand) -> Option<i64> {
+fn resolve_operand(monkeys: &HashMap<String, Monkey>, operand: &Operand) -> Option<i64> {
     match operand {
-        Operand::Number(number) => Some(number),
+        Operand::Number(number) => Some(*number),
         Operand::Monkey(monkey) => do_monkey_math(monkeys, &monkey),
     }
 }
 
 fn do_monkey_math(monkeys: &HashMap<String, Monkey>, current_monkey: &String) -> Option<i64> {
     let monkey = monkeys.get(current_monkey)?;
-    match monkey.operation.clone() {
-        Operation::Addition((first_operand, second_operand)) => {
-            let first_operand = resolve_operand(monkeys, first_operand)?;
-            let second_operand = resolve_operand(monkeys, second_operand)?;
-            Some(first_operand + second_operand)
-        }
-
-        Operation::Subtraction((first_operand, second_operand)) => {
-            let first_operand = resolve_operand(monkeys, first_operand)?;
-            let second_operand = resolve_operand(monkeys, second_operand)?;
-            Some(first_operand - second_operand)
-        }
-        Operation::Multiplication((first_operand, second_operand)) => {
-            let first_operand = resolve_operand(monkeys, first_operand)?;
-            let second_operand = resolve_operand(monkeys, second_operand)?;
-            Some(first_operand * second_operand)
-        }
-        Operation::Division((first_operand, second_operand)) => {
-            let first_operand = resolve_operand(monkeys, first_operand)?;
-            let second_operand = resolve_operand(monkeys, second_operand)?;
-            Some(first_operand / second_operand)
-        }
-        Operation::Identity(operand) => {
-            let operand = resolve_operand(monkeys, operand)?;
-            Some(operand)
-        }
+    let first_operand = resolve_operand(monkeys, &monkey.operation.first_operand)?;
+    if monkey.operation.operator.is_none() {
+        return Some(first_operand);
     }
+    let second_operand = resolve_operand(
+        monkeys,
+        &monkey
+            .operation
+            .second_operand
+            .as_ref()
+            .expect("Operator requires second operand."),
+    )?;
+    let result = match &monkey.operation.operator.as_ref().unwrap() {
+        Operator::Divide => first_operand / second_operand,
+        Operator::Multiply => first_operand * second_operand,
+        Operator::Minus => first_operand - second_operand,
+        Operator::Plus => first_operand + second_operand,
+    };
+    Some(result)
+}
+
+fn yell_chain<'a, 'b>(
+    monkeys: &'a HashMap<String, Monkey>,
+    from: &String,
+    to: &'b String,
+) -> Option<Vec<&'a String>>
+where
+    'b: 'a,
+{
+    if from == to {
+        let result = Vec::new();
+        return Some(result);
+    }
+    let current_monkey = monkeys.get(from)?;
+    if let Operand::Monkey(monkey) = &current_monkey.operation.first_operand {
+        let mut current = yell_chain(monkeys, &monkey, to);
+        if current.is_none() {
+            if let Operand::Monkey(monkey) = current_monkey.operation.second_operand.as_ref()? {
+                current = yell_chain(monkeys, &monkey, to);
+                current.as_mut()?.push(&monkey);
+                return Some(current?);
+            }
+        }
+        current.as_mut()?.push(&monkey);
+        return Some(current?);
+    }
+    None
 }
 
 fn main() {
@@ -144,6 +155,10 @@ fn main() {
         let result =
             do_monkey_math(&monkeys, &"root".to_string()).expect("Couldn't do the math :/");
         println!("{:?}", result);
+        println!(
+            "{:?}",
+            yell_chain(&monkeys, &"root".to_string(), &"humn".to_string())
+        );
     } else {
         println!("Couldn't read input.");
     }
