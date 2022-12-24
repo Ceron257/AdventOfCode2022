@@ -1,3 +1,4 @@
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashMap;
@@ -149,16 +150,132 @@ where
     None
 }
 
+fn do_correct_monkey_math(monkeys: &HashMap<String, Monkey>) -> Option<i64> {
+    let root = "root".to_string();
+    let humn = "humn".to_string();
+
+    let yell_chain = yell_chain(&monkeys, &root, &humn)?
+        .iter()
+        .rev()
+        .map(|v| *v)
+        .collect_vec();
+    let mut iter = yell_chain.iter();
+    let mut current_monkey = monkeys.get(&root)?;
+    let next_to_solve = *iter.next()?;
+    let mut expected_value;
+    match &current_monkey.operation.first_operand {
+        Operand::Number(expected_number) => {
+            match current_monkey.operation.second_operand.as_ref()? {
+                Operand::Number(_) => {
+                    panic!("Sorry cannot solve number == number :/");
+                }
+                Operand::Monkey(_) => {
+                    expected_value = *expected_number;
+                }
+            }
+        }
+        Operand::Monkey(first_monkey) => {
+            if first_monkey == next_to_solve {
+                match current_monkey.operation.second_operand.as_ref()? {
+                    Operand::Number(number) => {
+                        expected_value = *number;
+                    }
+                    Operand::Monkey(second_monkey) => {
+                        expected_value = do_monkey_math(monkeys, second_monkey)?;
+                    }
+                }
+            } else {
+                expected_value = do_monkey_math(monkeys, first_monkey)?;
+            }
+        }
+    }
+
+    current_monkey = monkeys.get(next_to_solve)?;
+
+    while let Some(next_to_solve) = iter.next() {
+        match &current_monkey.operation.first_operand {
+            Operand::Number(first_number) => {
+                match current_monkey.operation.second_operand.as_ref()? {
+                    Operand::Number(_) => {
+                        panic!("Sorry cannot solve number == number :/ 2");
+                    }
+                    Operand::Monkey(second_monkey) => {
+                        assert_eq!(*next_to_solve, second_monkey);
+                        expected_value = match current_monkey.operation.operator.as_ref()? {
+                            // first_number + second_monkey = expected_value
+                            // => second_monkey = expected_value - first_number
+                            Operator::Plus => expected_value - first_number,
+                            // first_number - second_monkey = expected_value
+                            // => second_monkey = first_number - expected_value
+                            Operator::Minus => first_number - expected_value,
+                            // first_number * second_monkey = expected_value
+                            // => second_monkey = expected_value / first_number
+                            Operator::Multiply => expected_value / first_number,
+                            // expeced_number / second_monkey = expected_value
+                            // => second_monkey = first_number / expected_value
+                            Operator::Divide => first_number / expected_value,
+                        };
+                    }
+                }
+            }
+            Operand::Monkey(first_monkey) => {
+                if first_monkey == *next_to_solve {
+                    let second_number = match current_monkey.operation.second_operand.as_ref()? {
+                        Operand::Number(number) => *number,
+                        Operand::Monkey(second_monkey) => do_monkey_math(monkeys, second_monkey)?,
+                    };
+                    expected_value = match current_monkey.operation.operator.as_ref()? {
+                        // first_monkey + second_number = expected_value
+                        // => first_monkey = expected_value - second_number
+                        Operator::Plus => expected_value - second_number,
+                        // first_monkey - second_number = expected_value
+                        // => first_monkey = expected_value + second_number
+                        Operator::Minus => expected_value + second_number,
+                        // first_monkey * second_number = expected_value
+                        // => first_monkey = expected_value / second_number
+                        Operator::Multiply => expected_value / second_number,
+                        // first_monkey / second_number = expected_value
+                        // => first_monkey = expected_value * second_number
+                        Operator::Divide => expected_value * second_number,
+                    };
+                } else {
+                    let first_number = match &current_monkey.operation.first_operand {
+                        Operand::Number(number) => *number,
+                        Operand::Monkey(monkey) => do_monkey_math(monkeys, monkey)?,
+                    };
+
+                    expected_value = match current_monkey.operation.operator.as_ref()? {
+                        // first_number + second_monkey = expected_value
+                        // => second_monkey = expected_value - first_number
+                        Operator::Plus => expected_value - first_number,
+                        // first_number - second_monkey = expected_value
+                        // => second_monkey = first_number - expected_value
+                        Operator::Minus => first_number - expected_value,
+                        // first_number * second_monkey = expected_value
+                        // => second_monkey = expected_value / first_number
+                        Operator::Multiply => expected_value / first_number,
+                        // first_number / second_monkey = expected_value
+                        // => second_monkey = first_number / expected_value
+                        Operator::Divide => first_number / expected_value,
+                    };
+                }
+            }
+        }
+        current_monkey = monkeys.get(*next_to_solve)?;
+    }
+
+    Some(expected_value)
+}
+
 fn main() {
     if let Ok(lines) = read_input("inputs/day21.txt") {
         let monkeys = parse_monkeys(lines.clone()).expect("Couldn't parse monkeys");
         let result =
             do_monkey_math(&monkeys, &"root".to_string()).expect("Couldn't do the math :/");
-        println!("{:?}", result);
-        println!(
-            "{:?}",
-            yell_chain(&monkeys, &"root".to_string(), &"humn".to_string())
-        );
+        println!("Root's result will be {:?}.", result);
+        let result =
+            do_correct_monkey_math(&monkeys).expect("Couldn't determine what humn has to say.");
+        println!("Humn has to say {}.", result);
     } else {
         println!("Couldn't read input.");
     }
